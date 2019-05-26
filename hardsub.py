@@ -3,7 +3,7 @@ import os
 from argparse import ArgumentParser
 from utils.subtitle_utils import subtitle_captions, str2time
 from image.image_utils import remove_noise_and_smooth
-from image.ocr import ocr_from_file, read_from_img
+from image.ocr import read_from_img
 
 
 def image_preprocess(img):
@@ -37,6 +37,10 @@ def detect_sub_text(img, lang):
     return text
 
 
+def is_sub_image(img, lang):
+    return False
+
+
 def make_sub_with_ref(video, ref, rect, lang):
     if not os.path.exists(ref):
         raise Exception("Reference subtitle error")
@@ -56,11 +60,10 @@ def make_sub_with_ref(video, ref, rect, lang):
         e = str2time(c.end)
         pos = int((s + ((e - s) / 2)) * fps / 1000)
 
-        cap.set(cv2.CAP_PROP_POS_FRAMES, pos)
+        cap.set(cv2.CAP_PROP_POS_FRAMES, pos)  # 자막 위치로 프레임 이동
         ret, frame = cap.read()
-        print("Frame position : {:.3f}ms".format(cap.get(cv2.CAP_PROP_POS_MSEC)))
+        print("Frame position : {:.3f}ms, {} frame".format(cap.get(cv2.CAP_PROP_POS_MSEC), cap.get(cv2.CAP_PROP_POS_FRAMES)))
 
-        # Our operations on the frame come here
         img = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         # img = image_preprocess(frame)
 
@@ -69,7 +72,7 @@ def make_sub_with_ref(video, ref, rect, lang):
         text = detect_sub_text(sub_img, lang=lang)
         print(text)
 
-        img = draw_sub_border(img, rect)
+        img = draw_sub_border(img, rect)  # 자막 경계 박스 출력
         img = cv2.resize(img, (960, 540))
 
         # Display the resulting frame
@@ -81,7 +84,16 @@ def make_sub_with_ref(video, ref, rect, lang):
     cv2.destroyAllWindows()
 
 
-def make_sub(video):
+font = cv2.FONT_HERSHEY_SIMPLEX
+# font = cv2.FONT_HERSHEY_COMPLEX
+font_size = 0.5
+
+
+def display_text(img, text):
+    cv2.putText(img, text, (10, 20), font, font_size, (255, 255, 0), 1)
+
+
+def make_sub(video, rect, lang):
     cap = cv2.VideoCapture(video)
     if not cap.isOpened():
         raise Exception("video not opened")
@@ -91,14 +103,19 @@ def make_sub(video):
     while cap.isOpened():
         # Capture frame-by-frame
         ret, frame = cap.read()
-        # print("Frame position : {}".format(cap.get(cv2.CAP_PROP_POS_FRAMES)))
-        print("Frame position : {:.3f}ms".format(cap.get(cv2.CAP_PROP_POS_MSEC)))
+        print("Frame position : {:.3f}ms, {} frame".format(cap.get(cv2.CAP_PROP_POS_MSEC), cap.get(cv2.CAP_PROP_POS_FRAMES)))
 
         # Our operations on the frame come here
-        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        img = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        # img = image_preprocess(frame)
+        sub_img = sub_image(img, rect)
+        sub = is_sub_image(sub_img, lang=lang)
+        display_text(sub_img, "Subtitle Frame : {}".format(sub))
+        img = draw_sub_border(img, rect)  # 자막 경계 박스 출력
+        img = cv2.resize(img, (960, 540))
 
         # Display the resulting frame
-        cv2.imshow(os.path.basename(args.video), gray)
+        cv2.imshow(os.path.basename(args.video), img)
         if cv2.waitKey(20) & 0xFF == ord('q'):
             break
 
@@ -110,19 +127,18 @@ def make_sub(video):
 def main(args):
     rect = args.pos.split(',')
     rect = [int(v) for v in rect]
-    print(rect)
     if args.ref:
         make_sub_with_ref(args.video, args.ref, rect, args.lang)
     else:
-        make_sub(args.video)
+        make_sub(args.video, rect, args.lang)
 
 
 if __name__ == "__main__":
     parser = ArgumentParser()
     parser.add_argument("--video", default="c:/tmp/5.mp4")
-    parser.add_argument("--ref", default="c:/tmp/5.smi")
+    parser.add_argument("--ref", default=None)
     parser.add_argument("--lang", default="kor")
     # parser.add_argument("--pos", default="0,800,1900,250")
-    parser.add_argument("--pos", default="0,350,950,150")
+    parser.add_argument("--pos", default="0,330,950,150")
     args = parser.parse_args()
     main(args)
