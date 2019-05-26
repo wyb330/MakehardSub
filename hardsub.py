@@ -2,8 +2,8 @@ import cv2
 import os
 from argparse import ArgumentParser
 from utils.subtitle_utils import subtitle_captions, str2time
-from image.textdetection import find_text_region
 from image.image_utils import remove_noise_and_smooth
+from image.ocr import ocr_from_file
 
 
 def image_preprocess(img):
@@ -58,37 +58,21 @@ def make_sub_with_ref(video, ref):
         img = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         # img = image_preprocess(frame)
         # rg, img = find_text_region(img, './image', True)
-        img = sub_image(img)
+        sub_img = sub_image(img)
         filename = os.path.join("./capture", "{}.png".format(i))
-        cv2.imwrite(filename, img)
-        # img = draw_sub_border(img)
-        # img = cv2.resize(img, (960, 540))
+        cv2.imwrite(filename, sub_img)
+        text = ocr_from_file(filename)
+        print(text)
+        img = draw_sub_border(img)
+        img = cv2.resize(img, (960, 540))
 
         # Display the resulting frame
         cv2.imshow(os.path.basename(args.video), img)
-        if cv2.waitKey(2000) & 0xFF == ord('q'):
+        if cv2.waitKey(1000) & 0xFF == ord('q'):
             break
 
     cap.release()
     cv2.destroyAllWindows()
-
-    # while cap.isOpened():
-    #     # Capture frame-by-frame
-    #     ret, frame = cap.read()
-    #     # print("Frame position : {}".format(cap.get(cv2.CAP_PROP_POS_FRAMES)))
-    #     print("Frame position : {:.3f}ms".format(cap.get(cv2.CAP_PROP_POS_MSEC)))
-    #
-    #     # Our operations on the frame come here
-    #     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-    #
-    #     # Display the resulting frame
-    #     cv2.imshow(os.path.basename(args.video), gray)
-    #     if cv2.waitKey(20) & 0xFF == ord('q'):
-    #         break
-    #
-    # # When everything done, release the capture
-    # cap.release()
-    # cv2.destroyAllWindows()
 
 
 def make_sub(video):
