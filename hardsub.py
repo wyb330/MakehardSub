@@ -3,7 +3,7 @@ import os
 from argparse import ArgumentParser
 from utils.subtitle_utils import subtitle_captions, str2time
 from image.image_utils import remove_noise_and_smooth
-from image.ocr import ocr_from_file
+from image.ocr import ocr_from_file, read_from_img
 
 
 def image_preprocess(img):
@@ -14,24 +14,30 @@ def image_preprocess(img):
     return img
 
 
-def draw_sub_border(img):
-    rect = [0, 350, 900, 150]
+def draw_sub_border(img, rect):
     cv2.rectangle(img, (rect[0], rect[1]), (rect[0] + rect[2], rect[1] + rect[3]), (255, 0, 0), 1)
 
     return img
 
 
-def sub_image(img):
-    rect = [0, 350, 900, 150]
-    row = 350
-    column = 0
-    height = 150
-    width = 900
-    img = img[row:row+height,column:column+width]
+def sub_image(img, rect):
+    column = rect[0]
+    row = rect[1]
+    width = rect[2]
+    height = rect[3]
+    img = img[row:row+height, column:column+width]
     return img
 
 
-def make_sub_with_ref(video, ref):
+def detect_sub_text(img, lang):
+    # filename = os.path.join("./capture", "{}.png".format(i))
+    # cv2.imwrite(filename, sub_img)
+    # text = ocr_from_file(filename)
+    text = read_from_img(img, lang=lang)
+    return text
+
+
+def make_sub_with_ref(video, ref, rect, lang):
     if not os.path.exists(ref):
         raise Exception("Reference subtitle error")
 
@@ -57,18 +63,18 @@ def make_sub_with_ref(video, ref):
         # Our operations on the frame come here
         img = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         # img = image_preprocess(frame)
-        # rg, img = find_text_region(img, './image', True)
-        sub_img = sub_image(img)
-        filename = os.path.join("./capture", "{}.png".format(i))
-        cv2.imwrite(filename, sub_img)
-        text = ocr_from_file(filename)
+
+        # 현재 frame에서 자막 추출
+        sub_img = sub_image(img, rect)
+        text = detect_sub_text(sub_img, lang=lang)
         print(text)
-        img = draw_sub_border(img)
+
+        img = draw_sub_border(img, rect)
         img = cv2.resize(img, (960, 540))
 
         # Display the resulting frame
         cv2.imshow(os.path.basename(args.video), img)
-        if cv2.waitKey(1000) & 0xFF == ord('q'):
+        if cv2.waitKey(33) & 0xFF == ord('q'):
             break
 
     cap.release()
@@ -102,8 +108,11 @@ def make_sub(video):
 
 
 def main(args):
+    rect = args.pos.split(',')
+    rect = [int(v) for v in rect]
+    print(rect)
     if args.ref:
-        make_sub_with_ref(args.video, args.ref)
+        make_sub_with_ref(args.video, args.ref, rect, args.lang)
     else:
         make_sub(args.video)
 
@@ -112,5 +121,8 @@ if __name__ == "__main__":
     parser = ArgumentParser()
     parser.add_argument("--video", default="c:/tmp/5.mp4")
     parser.add_argument("--ref", default="c:/tmp/5.smi")
+    parser.add_argument("--lang", default="kor")
+    # parser.add_argument("--pos", default="0,800,1900,250")
+    parser.add_argument("--pos", default="0,350,950,150")
     args = parser.parse_args()
     main(args)
