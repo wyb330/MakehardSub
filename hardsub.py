@@ -2,6 +2,33 @@ import cv2
 import os
 from argparse import ArgumentParser
 from utils.subtitle_utils import subtitle_captions, str2time
+from image.textdetection import find_text_region
+from image.image_utils import remove_noise_and_smooth
+
+
+def image_preprocess(img):
+    height, width, _ = img.shape
+    img = remove_noise_and_smooth(img)
+    img = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
+
+    return img
+
+
+def draw_sub_border(img):
+    rect = [0, 350, 900, 150]
+    cv2.rectangle(img, (rect[0], rect[1]), (rect[0] + rect[2], rect[1] + rect[3]), (255, 0, 0), 1)
+
+    return img
+
+
+def sub_image(img):
+    rect = [0, 350, 900, 150]
+    row = 350
+    column = 0
+    height = 150
+    width = 900
+    img = img[row:row+height,column:column+width]
+    return img
 
 
 def make_sub_with_ref(video, ref):
@@ -18,7 +45,7 @@ def make_sub_with_ref(video, ref):
     print("Frame per sec : {}".format(fps))
 
     captions = subtitle_captions(ref)
-    for c in captions:
+    for i, c in enumerate(captions):
         s = str2time(c.start)
         e = str2time(c.end)
         pos = int((s + ((e - s) / 2)) * fps / 1000)
@@ -28,8 +55,14 @@ def make_sub_with_ref(video, ref):
         print("Frame position : {:.3f}ms".format(cap.get(cv2.CAP_PROP_POS_MSEC)))
 
         # Our operations on the frame come here
-        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-        img = cv2.resize(gray, (960, 540))
+        img = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        # img = image_preprocess(frame)
+        # rg, img = find_text_region(img, './image', True)
+        img = sub_image(img)
+        filename = os.path.join("./capture", "{}.png".format(i))
+        cv2.imwrite(filename, img)
+        # img = draw_sub_border(img)
+        # img = cv2.resize(img, (960, 540))
 
         # Display the resulting frame
         cv2.imshow(os.path.basename(args.video), img)
@@ -93,7 +126,7 @@ def main(args):
 
 if __name__ == "__main__":
     parser = ArgumentParser()
-    parser.add_argument("--video", default="c:/tmp/34.mp4")
-    parser.add_argument("--ref", default="c:/tmp/34.srt")
+    parser.add_argument("--video", default="c:/tmp/5.mp4")
+    parser.add_argument("--ref", default="c:/tmp/5.smi")
     args = parser.parse_args()
     main(args)
