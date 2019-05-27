@@ -1,10 +1,9 @@
+# code from https://www.pyimagesearch.com/2018/08/20/opencv-text-detection-east-text-detector/
 # USAGE
 # python text_detection.py --image images/lebron_james.jpg --east frozen_east_text_detection.pb
 
 # import the necessary packages
 import numpy as np
-import argparse
-import time
 import cv2
 
 
@@ -72,31 +71,13 @@ def non_max_suppression(boxes, probs=None, overlapThresh=0.3):
     return boxes[pick].astype("int")
 
 
-# # construct the argument parser and parse the arguments
-# ap = argparse.ArgumentParser()
-# ap.add_argument("-i", "--image", type=str,
-#                 help="path to input image")
-# ap.add_argument("-east", "--east", type=str,
-#                 help="path to input EAST text detector")
-# ap.add_argument("-c", "--min-confidence", type=float, default=0.5,
-#                 help="minimum probability required to inspect a region")
-# ap.add_argument("-w", "--width", type=int, default=320,
-#                 help="resized image width (should be multiple of 32)")
-# ap.add_argument("-e", "--height", type=int, default=320,
-#                 help="resized image height (should be multiple of 32)")
-# args = vars(ap.parse_args())
-#
-
 def east_detect(image, net, min_confidence=0.5):
     # load the input image and grab the image dimensions
-    orig = image.copy()
     (H, W) = image.shape[:2]
 
     # set the new width and height and then determine the ratio in change
     # for both the width and height
     (newW, newH) = (W, H)
-    rW = W / float(newW)
-    rH = H / float(newH)
 
     # resize the image and grab the new image dimensions
     image = cv2.resize(image, (newW, newH))
@@ -111,15 +92,12 @@ def east_detect(image, net, min_confidence=0.5):
 
     # construct a blob from the image and then perform a forward pass of
     # the model to obtain the two output layer sets
-    blob = cv2.dnn.blobFromImage(image, 1.0, (W, H),
-                                 (123.68, 116.78, 103.94), swapRB=True, crop=False)
-    start = time.time()
+    blob = cv2.dnn.blobFromImage(image, 1.0, (W, H), (123.68, 116.78, 103.94), swapRB=True, crop=False)
     net.setInput(blob)
     (scores, geometry) = net.forward(layerNames)
-    end = time.time()
 
     # show timing information on text prediction
-    print("[INFO] text detection took {:.6f} seconds".format(end - start))
+    # print("[INFO] text detection took {:.6f} seconds".format(end - start))
 
     # grab the number of rows and columns from the scores volume, then
     # initialize our set of bounding box rectangles and corresponding
@@ -178,16 +156,3 @@ def east_detect(image, net, min_confidence=0.5):
     boxes = non_max_suppression(np.array(rects), probs=confidences)
 
     return boxes
-
-    # loop over the bounding boxes
-    # for (startX, startY, endX, endY) in boxes:
-    #     # scale the bounding box coordinates based on the respective
-    #     # ratios
-    #     startX = int(startX * rW)
-    #     startY = int(startY * rH)
-    #     endX = int(endX * rW)
-    #     endY = int(endY * rH)
-    #
-    #     # draw the bounding box on the image
-    #     cv2.rectangle(orig, (startX, startY), (endX, endY), (0, 255, 0), 2)
-    #
