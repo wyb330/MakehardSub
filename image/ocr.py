@@ -93,11 +93,36 @@ def adjust_image(img):
 
 
 def ocr_from_array(img, lang):
-    # oem 1: LSTM Engine only
+    # oem
+    #     0: Legacy Engine only
+    #     1: LSTM Engine only
     #     2: Legacy and LSTM engine
+    '''
+    Page segmentation modes:
+      0    Orientation and script detection (OSD) only.
+      1    Automatic page segmentation with OSD.
+      2    Automatic page segmentation, but no OSD, or OCR.
+      3    Fully automatic page segmentation, but no OSD. (Default)
+      4    Assume a single column of text of variable sizes.
+      5    Assume a single uniform block of vertically aligned text.
+      6    Assume a single uniform block of text.
+      7    Treat the image as a single text line.
+      8    Treat the image as a single word.
+      9    Treat the image as a single word in a circle.
+     10    Treat the image as a single character.
+     11    Sparse text. Find as much text as possible in no particular order.
+     12    Sparse text with OSD.
+     13    Raw line. Treat the image as a single text line,
+           bypassing hacks that are Tesseract-specific.
+
+    :param img:
+    :param lang:
+    :return:
+    '''
     img = adjust_image(img)
+    config = ('--oem 1  --psm 7')
     ocr_text = pytesseract.image_to_string(Image.fromarray(img),
-                                           config='--oem 1  --psm 3',
+                                           config=config,
                                            lang=lang)
 
     return ocr_text

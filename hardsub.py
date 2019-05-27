@@ -4,6 +4,7 @@ from argparse import ArgumentParser
 from utils.subtitle_utils import subtitle_captions, str2time
 from image.image_utils import remove_noise_and_smooth
 from image.ocr import read_from_img
+from image.text_detection import east_detect
 
 
 def image_preprocess(img):
@@ -37,13 +38,32 @@ def detect_sub_text(img, lang):
     return text
 
 
-def is_sub_image(img, lang):
+def is_sub_image(img, net, lang):
     # text = read_from_img(img, lang=lang)
     # if text:
     #     return True
     # else:
     #     return False
-    return False
+    orig = img.copy()
+    (H, W) = img.shape[:2]
+    (newW, newH) = (320, 320)
+    rW = W / float(newW)
+    rH = H / float(newH)
+
+    img = cv2.resize(img, (320, 320))
+    boxes = east_detect(img, net)
+    # for (startX, startY, endX, endY) in boxes:
+    #     # scale the bounding box coordinates based on the respective
+    #     # ratios
+    #     startX = int(startX * rW)
+    #     startY = int(startY * rH)
+    #     endX = int(endX * rW)
+    #     endY = int(endY * rH)
+    #
+    #     # draw the bounding box on the image
+    #     cv2.rectangle(orig, (startX, startY), (endX, endY), (0, 255, 0), 2)
+
+    return True if len(boxes) > 0 else False
 
 
 def make_sub_with_ref(video, ref, rect, lang):
@@ -111,6 +131,10 @@ def make_sub(video, rect, lang):
     print("Frame per sec : {}".format(fps))
     print("Frame per window : {}".format(fpw))
 
+    # load the pre-trained EAST text detector
+    print("[INFO] loading EAST text detector...")
+    net = cv2.dnn.readNet("./model/frozen_east_text_detection.pb")
+
     index = 0
     while cap.isOpened():
         # Capture frame-by-frame
@@ -118,11 +142,12 @@ def make_sub(video, rect, lang):
         print("Frame position : {:.3f}ms, {} frame".format(cap.get(cv2.CAP_PROP_POS_MSEC), cap.get(cv2.CAP_PROP_POS_FRAMES)))
 
         # Our operations on the frame come here
-        img = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        # img = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        img = frame
         # img = image_preprocess(frame)
         img = cv2.resize(img, (960, 540))
         sub_img = sub_image(img, rect)
-        sub = is_sub_image(sub_img, lang=lang)
+        sub = is_sub_image(sub_img, net, lang=lang)
         display_text(sub_img, "Subtitle Frame : {}".format(sub))
         img = draw_sub_border(img, rect)  # 자막 경계 박스 출력
 
