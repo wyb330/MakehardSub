@@ -2,9 +2,9 @@ import cv2
 import os
 from argparse import ArgumentParser
 from utils.subtitle_utils import subtitle_captions, str2time
-from utils.subtitle_utils import to_srt_timestamp, save_as_srt
+from utils.subtitle_utils import to_srt_timestamp, save_as_srt, save_as_smi
 from subtitle.generic import Caption
-from utils.file_utils import change_file_extension
+from utils.file_utils import change_file_extension, extract_file_extension
 from image.image_utils import remove_noise_and_smooth
 from image.ocr import read_from_img
 from image.text_detection import east_detect
@@ -64,7 +64,15 @@ def is_sub_image(img, net):
     return True if len(boxes) > 0 else False
 
 
-def make_sub_with_ref(video, ref, rect, lang):
+def save_subtitle(output, captions):
+    ext = extract_file_extension(output)
+    if ext == ".smi":
+        save_as_smi(output, captions)
+    elif ext == ".srt":
+        save_as_srt(output, captions)
+
+
+def make_sub_with_ref(video, ref, rect, lang, output):
     if not os.path.exists(ref):
         raise Exception("Reference subtitle error")
 
@@ -77,6 +85,7 @@ def make_sub_with_ref(video, ref, rect, lang):
     print("Frame count : {}".format(frame_count))
     print("Frame per sec : {}".format(fps))
 
+    sub_captions = []
     captions = subtitle_captions(ref)
     for i, c in enumerate(captions):
         s = str2time(c.start)
@@ -85,26 +94,32 @@ def make_sub_with_ref(video, ref, rect, lang):
 
         cap.set(cv2.CAP_PROP_POS_FRAMES, pos)  # 자막 위치로 프레임 이동
         ret, frame = cap.read()
-        print("Frame position : {:.3f}ms, {} frame".format(cap.get(cv2.CAP_PROP_POS_MSEC), cap.get(cv2.CAP_PROP_POS_FRAMES)))
 
         img = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         # img = image_preprocess(frame)
+        img = cv2.resize(img, (960, 540))
 
         # 현재 frame에서 자막 추출
         sub_img = sub_image(img, rect)
         text = detect_sub_text(sub_img, lang=lang)
-        print(text)
+        print("[{}]Frame position : {}, {} frame".format(i,
+                                                         to_srt_timestamp(cap.get(cv2.CAP_PROP_POS_MSEC)),
+                                                         cap.get(cv2.CAP_PROP_POS_FRAMES)), end=" ")
+        print("[{}]\n".format(text))
+        caption = Caption(c.start, c.end, text)
+        sub_captions.append(caption)
 
         img = draw_sub_border(img, rect)  # 자막 경계 박스 출력
-        img = cv2.resize(img, (960, 540))
 
         # Display the resulting frame
         cv2.imshow(os.path.basename(args.video), img)
-        if cv2.waitKey(33) & 0xFF == ord('q'):
+        if cv2.waitKey(3) & 0xFF == ord('q'):
             break
 
     cap.release()
     cv2.destroyAllWindows()
+
+    save_subtitle(output, sub_captions)
 
 
 font = cv2.FONT_HERSHEY_SIMPLEX
@@ -196,16 +211,17 @@ def main(args):
     rect = args.pos.split(',')
     rect = [int(v) for v in rect]
     if args.ref:
-        make_sub_with_ref(args.video, args.ref, rect, args.lang)
+        make_sub_with_ref(args.video, args.ref, rect, args.lang, args.output)
     else:
         make_sub(args.video, rect, args.frame_window, args.model_path)
 
 
 if __name__ == "__main__":
     parser = ArgumentParser()
-    parser.add_argument("--video", default="c:/tmp/1.mkv")
-    parser.add_argument("--ref", default=None)
-    parser.add_argument("--lang", default="kor")
+    parser.add_argument("--video", default="c:/tmp/1.mp4")
+    parser.add_argument("--ref", default="c:/tmp/1.srt")
+    parser.add_argument("--output", default="c:/tmp/1.smi")
+    parser.add_argument("--lang", default="eng")
     parser.add_argument("--frame_window", default=250, type=int)
     parser.add_argument("--pos", default="5,380,950,150")
     parser.add_argument("--model_path", default="./model/frozen_east_text_detection.pb")

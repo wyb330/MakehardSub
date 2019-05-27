@@ -42,7 +42,7 @@ def subtitle_captions(file):
     return captions
 
 
-def save_as_smi(filename, texts, times):
+def save_as_smi(filename, captions):
     smi_style = """
     <STYLE TYPE="text/css">
     <!--
@@ -58,20 +58,10 @@ def save_as_smi(filename, texts, times):
     style = Style()
     style.lines = smi_style
     subtitle = Subtitle(styles=style)
-    for time, text in zip(times, texts):
-        subtitle.add(to_srt_timestamp(time[0]), to_srt_timestamp(time[1]), text)
+    for caption in captions:
+        subtitle.add(caption.start, caption.end, caption.text)
 
     subtitle.save_as_smi(filename)
-
-
-def save_to_srt(filename, texts, times):
-    subtitle = Subtitle()
-    for time, text in zip(times, texts):
-        if text == "&nbsp;":
-            continue
-        subtitle.add(to_srt_timestamp(time[0]), to_srt_timestamp(time[1]), text)
-
-    subtitle.save_as_srt(filename)
 
 
 def save_as_srt(filename, captions):
