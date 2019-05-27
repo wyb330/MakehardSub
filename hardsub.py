@@ -125,7 +125,7 @@ def extract_sub(not_sub):
             duration = (i - prior)
             caption = Caption(to_srt_timestamp(prior),
                               to_srt_timestamp(i),
-                              'Sub duration: {.3f}ms'.format(duration)
+                              'Sub duration: {:.3f}ms'.format(duration)
                               )
             sub_captions.append(caption)
         prior = i
@@ -170,13 +170,13 @@ def extract_sub_frames(video, rect, frame_window, model_path):
         sub = is_sub_image(sub_img, net)
         if not sub:
             not_sub.append(cap.get(cv2.CAP_PROP_POS_MSEC))
-        # display_text(sub_img, "Subtitle Frame : {}".format(sub))
-        # img = draw_sub_border(img, rect)  # 자막 경계 박스 출력
+        display_text(sub_img, "Subtitle Frame : {}".format(sub))
+        img = draw_sub_border(img, rect)  # 자막 경계 박스 출력
 
         # Display the resulting frame
-        # cv2.imshow(os.path.basename(args.video), img)
-        # if cv2.waitKey(3) & 0xFF == ord('q'):
-        #     break
+        cv2.imshow(os.path.basename(args.video), img)
+        if cv2.waitKey(3) & 0xFF == ord('q'):
+            break
 
     # When everything done, release the capture
     cap.release()
@@ -203,7 +203,7 @@ def main(args):
 
 if __name__ == "__main__":
     parser = ArgumentParser()
-    parser.add_argument("--video", default="c:/tmp/5.mp4")
+    parser.add_argument("--video", default="c:/tmp/1.mkv")
     parser.add_argument("--ref", default=None)
     parser.add_argument("--lang", default="kor")
     parser.add_argument("--frame_window", default=250, type=int)

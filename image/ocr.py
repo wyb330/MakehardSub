@@ -1,15 +1,8 @@
 """
-이미지에 있는 텍스트를 추출한다.
-pytesseract는 shell 명령어를 이용하고 pyocr은 shell과 dll 모두 사용가능함.
-속도 문제 때문에 pyocr에서 tesseract dll를 사용할 수 있으면, 이를 먼저 사용하고
-그렇지 않다면 pytesseract를 사용함
-
 tesseract 한글 데이터 다운로드 https://github.com/tesseract-ocr/tessdata
 """
 import numpy as np
 import pytesseract
-# import pyocr
-# import pyocr.builders
 from PIL import Image
 import cv2
 
