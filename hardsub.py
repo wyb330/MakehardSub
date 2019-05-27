@@ -38,6 +38,11 @@ def detect_sub_text(img, lang):
 
 
 def is_sub_image(img, lang):
+    # text = read_from_img(img, lang=lang)
+    # if text:
+    #     return True
+    # else:
+    #     return False
     return False
 
 
@@ -98,8 +103,15 @@ def make_sub(video, rect, lang):
     if not cap.isOpened():
         raise Exception("video not opened")
 
-    print("Frame count : {}".format(cap.get(cv2.CAP_PROP_FRAME_COUNT)))
-    print("Frame per sec : {}".format(cap.get(cv2.CAP_PROP_FPS)))
+    frame_count = cap.get(cv2.CAP_PROP_FRAME_COUNT)
+    fps = cap.get(cv2.CAP_PROP_FPS)
+    frame_window = 250
+    fpw = fps * frame_window / 1000
+    print("Frame count : {}".format(frame_count))
+    print("Frame per sec : {}".format(fps))
+    print("Frame per window : {}".format(fpw))
+
+    index = 0
     while cap.isOpened():
         # Capture frame-by-frame
         ret, frame = cap.read()
@@ -108,16 +120,20 @@ def make_sub(video, rect, lang):
         # Our operations on the frame come here
         img = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         # img = image_preprocess(frame)
+        img = cv2.resize(img, (960, 540))
         sub_img = sub_image(img, rect)
         sub = is_sub_image(sub_img, lang=lang)
         display_text(sub_img, "Subtitle Frame : {}".format(sub))
         img = draw_sub_border(img, rect)  # 자막 경계 박스 출력
-        img = cv2.resize(img, (960, 540))
 
         # Display the resulting frame
         cv2.imshow(os.path.basename(args.video), img)
-        if cv2.waitKey(20) & 0xFF == ord('q'):
+        if cv2.waitKey(10) & 0xFF == ord('q'):
             break
+
+        pos = index * fpw
+        cap.set(cv2.CAP_PROP_POS_FRAMES, pos)
+        index += 1
 
     # When everything done, release the capture
     cap.release()
@@ -138,7 +154,6 @@ if __name__ == "__main__":
     parser.add_argument("--video", default="c:/tmp/5.mp4")
     parser.add_argument("--ref", default=None)
     parser.add_argument("--lang", default="kor")
-    # parser.add_argument("--pos", default="0,800,1900,250")
-    parser.add_argument("--pos", default="0,330,950,150")
+    parser.add_argument("--pos", default="5,380,950,150")
     args = parser.parse_args()
     main(args)
