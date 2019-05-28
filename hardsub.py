@@ -79,7 +79,7 @@ def save_subtitle(output, captions):
         save_as_srt(output, captions)
 
 
-def make_sub_with_ref(video, ref, rect, lang, output):
+def make_sub_with_ref(video, ref, rect, lang, output, ipm=0):
     if not os.path.exists(ref):
         raise Exception("Reference subtitle error")
 
@@ -102,8 +102,11 @@ def make_sub_with_ref(video, ref, rect, lang, output):
         cap.set(cv2.CAP_PROP_POS_FRAMES, pos)  # 자막 위치로 프레임 이동
         ret, frame = cap.read()
 
-        # img = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-        img = image_preprocess(frame)
+        img = frame
+        if ipm == 1:
+            img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        elif ipm == 2:
+            img = image_preprocess(frame)
         img = cv2.resize(img, (960, 540))
 
         # 현재 frame에서 자막 추출
@@ -220,19 +223,20 @@ def main(args):
     rect = args.pos.split(',')
     rect = [int(v) for v in rect]
     if args.ref:
-        make_sub_with_ref(args.video, args.ref, rect, args.lang, args.output)
+        make_sub_with_ref(args.video, args.ref, rect, args.lang, args.output, args.ipm)
     else:
         make_sub(args.video, rect, args.frame_window, args.model_path)
 
 
 if __name__ == "__main__":
     parser = ArgumentParser()
-    parser.add_argument("--video", default="c:/tmp/1.mp4")
-    parser.add_argument("--ref", default="c:/tmp/1.srt")
-    parser.add_argument("--output", default="c:/tmp/1.smi")
-    parser.add_argument("--lang", default="eng")
-    parser.add_argument("--frame_window", default=250, type=int)
-    parser.add_argument("--pos", default="5,380,950,150")
+    parser.add_argument("--video", required=True)
+    parser.add_argument("--ref", help="타임코드 자막")
+    parser.add_argument("--output", help="출력 자막 파일명")
+    parser.add_argument("--lang", default="eng", help="자막 언어")
+    parser.add_argument("--frame_window", default=250, type=int, help="프레임 간격(ms)")
+    parser.add_argument("--pos", default="5,380,950,150", help="자막 영역 좌표")
     parser.add_argument("--model_path", default="./model/frozen_east_text_detection.pb")
+    parser.add_argument("--ipm", default=0, help="이미지 전처리 모드")
     args = parser.parse_args()
     main(args)
