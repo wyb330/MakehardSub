@@ -9,6 +9,7 @@ import cv2
 
 enlarge = 1
 
+
 def adjust_image(img):
     if len(img.shape) == 3:
         img_gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
@@ -28,7 +29,7 @@ def adjust_image(img):
     return thresh
 
 
-def ocr_from_array(img, lang):
+def ocr_from_array(img, lang, oem=1, psm=6):
     '''
     oem
       0: Legacy Engine only
@@ -57,7 +58,7 @@ def ocr_from_array(img, lang):
     :return:
     '''
     img = adjust_image(img)
-    config = ('--oem 1  --psm 3')
+    config = ('--oem {}  --psm {}'.format(oem, psm))
     ocr_text = pytesseract.image_to_string(Image.fromarray(img),
                                            config=config,
                                            lang=lang)
@@ -75,8 +76,8 @@ def ocr_fom_file(file, lang):
     return ocr_from_array(img, lang)
 
 
-def read_from_img(img, lang):
-    text = ocr_from_array(img, lang)
+def read_from_img(img, lang, oem=1, psm=6):
+    text = ocr_from_array(img, lang, oem, psm)
     return text
 
 

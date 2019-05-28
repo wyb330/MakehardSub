@@ -10,6 +10,13 @@ from image.ocr import read_from_img
 from image.text_detection import east_detect
 
 
+def denoise_text(text):
+    sents = text.split('\n')
+    sents = [sent for sent in sents if len(sent) > 1]
+
+    return ' '.join(sents)
+
+
 def image_preprocess(img):
     height, width, _ = img.shape
     img = remove_noise_and_smooth(img)
@@ -33,11 +40,11 @@ def sub_image(img, rect):
     return img
 
 
-def detect_sub_text(img, lang):
-    # filename = os.path.join("./capture", "{}.png".format(i))
-    # cv2.imwrite(filename, sub_img)
-    # text = ocr_from_file(filename)
-    text = read_from_img(img, lang=lang)
+def detect_sub_text(img, lang, index, save=False):
+    if save:
+        filename = os.path.join("./capture", "{}.png".format(index))
+        cv2.imwrite(filename, img)
+    text = read_from_img(img, lang=lang, oem=1, psm=6)
     return text
 
 
@@ -95,16 +102,17 @@ def make_sub_with_ref(video, ref, rect, lang, output):
         cap.set(cv2.CAP_PROP_POS_FRAMES, pos)  # 자막 위치로 프레임 이동
         ret, frame = cap.read()
 
-        img = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-        # img = image_preprocess(frame)
+        # img = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        img = image_preprocess(frame)
         img = cv2.resize(img, (960, 540))
 
         # 현재 frame에서 자막 추출
         sub_img = sub_image(img, rect)
-        text = detect_sub_text(sub_img, lang=lang)
+        text = detect_sub_text(sub_img, lang=lang, index=i, save=False)
         print("[{}]Frame position : {}, {} frame".format(i,
                                                          to_srt_timestamp(cap.get(cv2.CAP_PROP_POS_MSEC)),
                                                          cap.get(cv2.CAP_PROP_POS_FRAMES)), end=" ")
+        text = denoise_text(text)
         print("[{}]\n".format(text))
         caption = Caption(c.start, c.end, text)
         sub_captions.append(caption)
@@ -174,7 +182,8 @@ def extract_sub_frames(video, rect, frame_window, model_path):
         index += 1
         # Capture frame-by-frame
         ret, frame = cap.read()
-        print("Frame position : {}, {} frame".format(to_srt_timestamp(cap.get(cv2.CAP_PROP_POS_MSEC)), cap.get(cv2.CAP_PROP_POS_FRAMES)))
+        print("Frame position : {}, {} frame".format(to_srt_timestamp(cap.get(cv2.CAP_PROP_POS_MSEC)),
+                                                     cap.get(cv2.CAP_PROP_POS_FRAMES)))
 
         # Our operations on the frame come here
         # img = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
