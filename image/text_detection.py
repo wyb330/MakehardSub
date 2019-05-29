@@ -71,7 +71,63 @@ def non_max_suppression(boxes, probs=None, overlapThresh=0.3):
     return boxes[pick].astype("int")
 
 
-def east_detect_image(image, net, min_confidence=0.5):
+def text_boxes(score, geometry, numRows, numCols, min_confidence):
+    rects = []
+    confidences = []
+
+    # loop over the number of rows
+    for y in range(0, numRows):
+        # extract the scores (probabilities), followed by the geometrical
+        # data used to derive potential bounding box coordinates that
+        # surround text
+        scoresData = score[0, y]
+        xData0 = geometry[0, y]
+        xData1 = geometry[1, y]
+        xData2 = geometry[2, y]
+        xData3 = geometry[3, y]
+        anglesData = geometry[4, y]
+
+        # loop over the number of columns
+        for x in range(0, numCols):
+            # if our score does not have sufficient probability, ignore it
+            if scoresData[x] < min_confidence:
+                continue
+
+            # compute the offset factor as our resulting feature maps will
+            # be 4x smaller than the input image
+            (offsetX, offsetY) = (x * 4.0, y * 4.0)
+
+            # extract the rotation angle for the prediction and then
+            # compute the sin and cosine
+            angle = anglesData[x]
+            cos = np.cos(angle)
+            sin = np.sin(angle)
+
+            # use the geometry volume to derive the width and height of
+            # the bounding box
+            h = xData0[x] + xData2[x]
+            w = xData1[x] + xData3[x]
+
+            # compute both the starting and ending (x, y)-coordinates for
+            # the text prediction bounding box
+            endX = int(offsetX + (cos * xData1[x]) + (sin * xData2[x]))
+            endY = int(offsetY - (sin * xData1[x]) + (cos * xData2[x]))
+            startX = int(endX - w)
+            startY = int(endY - h)
+
+            # add the bounding box coordinates and probability score to
+            # our respective lists
+            rects.append((startX, startY, endX, endY))
+            confidences.append(scoresData[x])
+
+    # apply non-maxima suppression to suppress weak, overlapping bounding
+    # boxes
+    boxes = non_max_suppression(np.array(rects), probs=confidences)
+
+    return boxes
+
+
+def east_detect_image(image, net, min_confidence=0.7):
     # load the input image and grab the image dimensions
     (H, W) = image.shape[:2]
 
@@ -156,3 +212,29 @@ def east_detect_image(image, net, min_confidence=0.5):
     boxes = non_max_suppression(np.array(rects), probs=confidences)
 
     return boxes
+
+
+def east_detect_images(images, net, min_confidence=0.5):
+    # define the two output layer names for the EAST detector model that
+    # we are interested -- the first is the output probabilities and the
+    # second can be used to derive the bounding box coordinates of text
+    layerNames = [
+        "feature_fusion/Conv_7/Sigmoid",
+        "feature_fusion/concat_3"]
+
+    # construct a blob from the image and then perform a forward pass of
+    # the model to obtain the two output layer sets
+    blob = cv2.dnn.blobFromImages(images, 1.0, (320, 320), (123.68, 116.78, 103.94), swapRB=True, crop=False)
+    net.setInput(blob)
+    (scores, geometry) = net.forward(layerNames)
+
+    # grab the number of rows and columns from the scores volume, then
+    # initialize our set of bounding box rectangles and corresponding
+    # confidence scores
+    sub_boxes = []
+    for i, score in enumerate(scores):
+        (numRows, numCols) = score.shape[1:3]
+        sub_box = text_boxes(score, geometry[i], numRows, numCols, min_confidence)
+        sub_boxes.append(sub_box)
+
+    return sub_boxes

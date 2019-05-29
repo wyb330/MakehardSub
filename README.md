@@ -45,7 +45,7 @@ python hardsub.py --video example.mp4
 
 ## 자체 자막의 자막 추출
 ```
-python hardsub.py --video example.mp4 --ref example.srt --lang eng
+python hardsub.py --video example.mp4 --ref example.srt --output example.smi --lang eng
 ```
 
 타임코드 자막을 이용하여 해당 프레임에 있는 자막을 추출한다.

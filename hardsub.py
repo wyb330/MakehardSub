@@ -1,5 +1,6 @@
 import cv2
 import os
+import time
 from argparse import ArgumentParser
 from utils.subtitle_utils import subtitle_captions, str2time
 from utils.subtitle_utils import to_srt_timestamp, save_as_srt, save_as_smi
@@ -7,7 +8,7 @@ from subtitle.generic import Caption
 from utils.file_utils import change_file_extension, extract_file_extension
 from image.image_utils import remove_noise_and_smooth
 from image.ocr import read_from_img
-from image.text_detection import east_detect_image
+from image.text_detection import east_detect_image, east_detect_images
 
 
 def denoise_text(text):
@@ -69,6 +70,14 @@ def is_sub_image(img, net):
     #     cv2.rectangle(orig, (startX, startY), (endX, endY), (0, 255, 0), 2)
 
     return True if len(boxes) > 0 else False
+
+
+def detect_sub_images(images, net):
+    images = [cv2.resize(img, (320, 320)) for img in images]
+    boxes = east_detect_images(images, net)
+    subs = [True if len(box) > 0 else False for box in boxes]
+
+    return subs
 
 
 def save_subtitle(output, captions):
@@ -159,7 +168,7 @@ def extract_sub(not_sub):
     return sub_captions
 
 
-def extract_sub_frames(video, rect, frame_window, model_path):
+def extract_sub_frames(video, rect, frame_window, model_path, batch_size):
     cap = cv2.VideoCapture(video)
     if not cap.isOpened():
         raise Exception("video not opened")
@@ -177,6 +186,8 @@ def extract_sub_frames(video, rect, frame_window, model_path):
 
     index = 0
     not_sub = []
+    sub_images = []
+    sub_times = []
     while cap.isOpened():
         pos = index * int(fpw)
         if pos >= frame_count:
@@ -185,8 +196,6 @@ def extract_sub_frames(video, rect, frame_window, model_path):
         index += 1
         # Capture frame-by-frame
         ret, frame = cap.read()
-        print("Frame position : {}, {} frame".format(to_srt_timestamp(cap.get(cv2.CAP_PROP_POS_MSEC)),
-                                                     cap.get(cv2.CAP_PROP_POS_FRAMES)))
 
         # Our operations on the frame come here
         # img = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
@@ -194,11 +203,20 @@ def extract_sub_frames(video, rect, frame_window, model_path):
         # img = image_preprocess(frame)
         img = cv2.resize(img, (960, 540))
         sub_img = sub_image(img, rect)
-        sub = is_sub_image(sub_img, net)
-        if not sub:
-            not_sub.append(cap.get(cv2.CAP_PROP_POS_MSEC))
-        display_text(sub_img, "Subtitle Frame : {}".format(sub))
+        sub_images.append(sub_img)
+        sub_times.append(cap.get(cv2.CAP_PROP_POS_MSEC))
+        if len(sub_images) >= batch_size:
+            subs = detect_sub_images(sub_images, net)
+            for sub, t in zip(subs, sub_times):
+                if sub:
+                    not_sub.append(t)
+
+            sub_images = []
+            sub_times = []
+
         img = draw_sub_border(img, rect)  # 자막 경계 박스 출력
+        display_text(img, "Frame position : {}, {} frame".format(to_srt_timestamp(cap.get(cv2.CAP_PROP_POS_MSEC)),
+                                                                 cap.get(cv2.CAP_PROP_POS_FRAMES)))
 
         # Display the resulting frame
         cv2.imshow(os.path.basename(args.video), img)
@@ -209,14 +227,23 @@ def extract_sub_frames(video, rect, frame_window, model_path):
     cap.release()
     cv2.destroyAllWindows()
 
+    if len(sub_images) > 0:
+        subs = detect_sub_images(sub_images, net)
+        for sub, t in zip(subs, sub_times):
+            if sub:
+                not_sub.append(t)
+
     return not_sub
 
 
-def make_sub(video, rect, frame_window, model_path):
-    not_sub = extract_sub_frames(video, rect, frame_window, model_path)
+def make_sub(video, rect, frame_window, model_path, batch_size):
+    start = time.time()
+    not_sub = extract_sub_frames(video, rect, frame_window, model_path, batch_size)
     captions = extract_sub(not_sub)
     sub_file = change_file_extension(video, '.srt')
     save_as_srt(sub_file, captions)
+    end = time.time()
+    print("[INFO] text detection took {:.6f} seconds".format(end - start))
 
 
 def main(args):
@@ -227,7 +254,7 @@ def main(args):
             raise Exception("출력 자막 파일명을 입력하세요.(--output 옵션)")
         make_sub_with_ref(args.video, args.ref, rect, args.lang, args.output, args.ipm)
     else:
-        make_sub(args.video, rect, args.frame_window, args.model_path)
+        make_sub(args.video, rect, args.frame_window, args.model_path, args.batch_size)
 
 
 if __name__ == "__main__":
@@ -236,8 +263,9 @@ if __name__ == "__main__":
     parser.add_argument("--ref", help="타임코드 자막")
     parser.add_argument("--output", help="출력 자막 파일명")
     parser.add_argument("--lang", default="eng", help="자막 언어")
-    parser.add_argument("--frame_window", default=100, type=int, help="프레임 간격(ms)")
-    parser.add_argument("--pos", default="250,400,500,140", help="자막 영역 좌표")
+    parser.add_argument("--frame_window", default=250, type=int, help="프레임 간격(ms)")
+    parser.add_argument("--batch_size", default=128, type=int)
+    parser.add_argument("--pos", default="250,400,500,130", help="자막 영역 좌표")
     parser.add_argument("--model_path", default="./model/frozen_east_text_detection.pb")
     parser.add_argument("--ipm", default=0, help="이미지 전처리 모드")
     args = parser.parse_args()
