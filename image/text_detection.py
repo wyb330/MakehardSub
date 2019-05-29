@@ -214,7 +214,7 @@ def east_detect_image(image, net, min_confidence=0.7):
     return boxes
 
 
-def east_detect_images(images, net, min_confidence=0.5):
+def east_detect_images(images, net, min_confidence=0.7):
     # define the two output layer names for the EAST detector model that
     # we are interested -- the first is the output probabilities and the
     # second can be used to derive the bounding box coordinates of text
