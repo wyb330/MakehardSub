@@ -71,7 +71,7 @@ def non_max_suppression(boxes, probs=None, overlapThresh=0.3):
     return boxes[pick].astype("int")
 
 
-def east_detect(image, net, min_confidence=0.5):
+def east_detect_image(image, net, min_confidence=0.5):
     # load the input image and grab the image dimensions
     (H, W) = image.shape[:2]
 

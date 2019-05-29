@@ -7,7 +7,7 @@ from subtitle.generic import Caption
 from utils.file_utils import change_file_extension, extract_file_extension
 from image.image_utils import remove_noise_and_smooth
 from image.ocr import read_from_img
-from image.text_detection import east_detect
+from image.text_detection import east_detect_image
 
 
 def denoise_text(text):
@@ -56,14 +56,14 @@ def is_sub_image(img, net):
     # rH = H / float(newH)
 
     img = cv2.resize(img, (320, 320))
-    boxes = east_detect(img, net)
+    boxes = east_detect_image(img, net)
     # for (startX, startY, endX, endY) in boxes:
     #     # scale the bounding box coordinates based on the respective
     #     # ratios
     #     startX = int(startX * rW)
     #     startY = int(startY * rH)
     #     endX = int(endX * rW)
-    #     endY = int(endY * rH)
+    #     endY = int(endY * rHq)
     #
     #     # draw the bounding box on the image
     #     cv2.rectangle(orig, (startX, startY), (endX, endY), (0, 255, 0), 2)
@@ -223,6 +223,8 @@ def main(args):
     rect = args.pos.split(',')
     rect = [int(v) for v in rect]
     if args.ref:
+        if not args.output:
+            raise Exception("출력 자막 파일명을 입력하세요.(--output 옵션)")
         make_sub_with_ref(args.video, args.ref, rect, args.lang, args.output, args.ipm)
     else:
         make_sub(args.video, rect, args.frame_window, args.model_path)
@@ -234,8 +236,8 @@ if __name__ == "__main__":
     parser.add_argument("--ref", help="타임코드 자막")
     parser.add_argument("--output", help="출력 자막 파일명")
     parser.add_argument("--lang", default="eng", help="자막 언어")
-    parser.add_argument("--frame_window", default=250, type=int, help="프레임 간격(ms)")
-    parser.add_argument("--pos", default="5,380,950,150", help="자막 영역 좌표")
+    parser.add_argument("--frame_window", default=100, type=int, help="프레임 간격(ms)")
+    parser.add_argument("--pos", default="250,400,500,140", help="자막 영역 좌표")
     parser.add_argument("--model_path", default="./model/frozen_east_text_detection.pb")
     parser.add_argument("--ipm", default=0, help="이미지 전처리 모드")
     args = parser.parse_args()
