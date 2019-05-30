@@ -1,3 +1,5 @@
 opencv-python
 pytesseract
 numpy
+google-cloud-vision
+

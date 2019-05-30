@@ -1,10 +1,10 @@
 """
 tesseract 한글 데이터 다운로드 https://github.com/tesseract-ocr/tessdata
 """
-import numpy as np
 import pytesseract
 from PIL import Image
 import cv2
+from image.image_utils import image_preprocess
 
 
 enlarge = 1
@@ -57,7 +57,7 @@ def ocr_from_array(img, lang, oem=1, psm=6):
     :param lang:
     :return:
     '''
-    img = adjust_image(img)
+    # img = adjust_image(img)
     config = ('--oem {}  --psm {}'.format(oem, psm))
     ocr_text = pytesseract.image_to_string(Image.fromarray(img),
                                            config=config,
@@ -88,10 +88,16 @@ def read_from_file(file, lang):
 
 
 if __name__ == "__main__":
-    img_path = "../capture/2.png"
+    img_path = "../capture/17.png"
 
-    text = ocr_from_file(img_path, lang="kor")
+    img = cv2.imread(img_path)
+    # img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    # img = image_preprocess(img)
+    text = read_from_img(img, lang="kor", oem=1, psm=6)
     sents = text.split('\n')
     sents = [sent for sent in sents if sent]
     for sent in sents:
         print(sent)
+    cv2.imshow("image", img)
+    cv2.waitKey(2000)
+    cv2.destroyAllWindows()

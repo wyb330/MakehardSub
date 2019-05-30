@@ -13,7 +13,7 @@ def image_smoothening(img):
     return th3
 
 
-def remove_noise_and_smooth(img, morpholog=False):
+def remove_noise_and_smooth(img, morpholog=True):
     img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
     # Denoising
@@ -283,8 +283,6 @@ def find_text_region(img, show_edge=True):
 
 
 def image_preprocess(img, morpholog=False):
-    height, width, _ = img.shape
-    # img = ocr.adjust_image(img)
     img = remove_noise_and_smooth(img, morpholog)
     img = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
 
@@ -292,7 +290,7 @@ def image_preprocess(img, morpholog=False):
 
 
 if __name__ == "__main__":
-    file_name = '../capture/game4.jpg'
+    file_name = '../capture/12.png'
     img = cv2.imread(file_name)
     captch_ex(img)
     # rg, img = find_text_region(img)
