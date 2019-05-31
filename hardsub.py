@@ -1,12 +1,13 @@
 import cv2
 import os
+import glob
 import time
 from argparse import ArgumentParser
 from utils.subtitle_utils import subtitle_captions, str2time
 from utils.subtitle_utils import to_srt_timestamp, save_as_srt, save_as_smi
 from subtitle.generic import Caption
 from utils.file_utils import change_file_extension, extract_file_extension
-from image.image_utils import image_preprocess
+from image.image_utils import image_preprocess, merge_images
 from image.ocr import read_from_img
 from image.text_detection import east_detect_image, east_detect_images
 
@@ -35,7 +36,7 @@ def sub_image(img, rect):
 
 def detect_sub_text(img, lang, index, save=False):
     if save:
-        filename = os.path.join("./capture", "{}.png".format(index))
+        filename = os.path.join("./capture", "{:04d}.png".format(index))
         cv2.imwrite(filename, img)
     text = read_from_img(img, lang=lang, oem=1, psm=6)
     return text
@@ -61,6 +62,19 @@ def save_subtitle(output, captions):
         save_as_smi(output, captions)
     elif ext == ".srt":
         save_as_srt(output, captions)
+
+
+def merge_sub_images(path, output):
+    files = glob.glob(path)
+    if len(files) > 0:
+        images = []
+        for file in files:
+            img = cv2.imread(file)
+            images.append(img)
+
+        merge_images(images, output)
+    else:
+        print("합칠 이미지가 존재하지 않습니다.")
 
 
 def make_sub_with_ref(video, ref, rect, lang, output, ipm=0):
@@ -115,6 +129,7 @@ def make_sub_with_ref(video, ref, rect, lang, output, ipm=0):
     cv2.destroyAllWindows()
 
     save_subtitle(output, sub_captions)
+    # merge_sub_images("./capture/*.png", "./sub_images/sub_images.png")
 
 
 font = cv2.FONT_HERSHEY_SIMPLEX

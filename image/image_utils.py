@@ -289,14 +289,28 @@ def image_preprocess(img, morpholog=False):
     return img
 
 
-if __name__ == "__main__":
-    file_name = '../capture/12.png'
-    img = cv2.imread(file_name)
-    captch_ex(img)
-    # rg, img = find_text_region(img)
-    # plt.imshow(img)
-    # plt.show()
-    # cv2.imshow("image", img)
-    # cv2.waitKey(0)
-    # cv2.destroyAllWindows()
+def merge_images(images, output):
+    result = np.concatenate(images, axis=0)
+    cv2.imwrite(output, result)
 
+
+if __name__ == "__main__":
+    import glob
+    batch_size = 100
+    files = glob.glob("../capture/*.png")
+    print(files)
+    if len(files) > 0:
+        images = []
+        index = 0
+        for file in files:
+            img = cv2.imread(file)
+            images.append(img)
+            index += 1
+            if len(images) >= batch_size:
+                merge_images(images, "../sub_images/sub_images{}.png".format(index))
+                images = []
+
+        if len(images) > 0:
+            merge_images(images, "../sub_images/sub_images{}.png".format(index))
+    else:
+        print("합칠 이미지가 존재하지 않습니다.")
