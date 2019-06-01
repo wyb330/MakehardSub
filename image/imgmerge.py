@@ -8,6 +8,7 @@ import glob
 import os
 import cv2
 import numpy as np
+from argparse import ArgumentParser
 
 
 def merge_images(images, output):
@@ -35,4 +36,11 @@ def main(path, save_path, batch_size=100):
 
 
 if __name__ == "__main__":
-    main("C:/videosubfinder/RGBImages/*.jpeg", "C:/videosubfinder/TXTImages", 100)
+    parser = ArgumentParser()
+    parser.add_argument("-i", help="자막 이미지", required=True)
+    parser.add_argument("-o", help="저장할 디렉토리", required=True)
+    parser.add_argument("-b", default=100, type=int, help="합칠 이미지 단위")
+    args = parser.parse_args()
+    main(args.i, args.o, args.b)
+
+    # main("C:/videosubfinder/RGBImages/*.jpeg", "C:/videosubfinder/TXTImages", 100)

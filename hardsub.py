@@ -10,6 +10,7 @@ from utils.file_utils import change_file_extension, extract_file_extension
 from image.image_utils import image_preprocess, merge_images
 from image.ocr import read_from_img
 from image.text_detection import east_detect_image, east_detect_images
+from skimage.measure import compare_ssim
 
 
 def denoise_text(text):
@@ -34,9 +35,9 @@ def sub_image(img, rect):
     return img
 
 
-def detect_sub_text(img, lang, index, save=False):
+def detect_sub_text(img, lang, t, save=False):
     if save:
-        filename = os.path.join("./capture", "{:04d}.png".format(index))
+        filename = os.path.join("./capture", "{}.png".format(t))
         cv2.imwrite(filename, img)
     text = read_from_img(img, lang=lang, oem=1, psm=6)
     return text
@@ -54,6 +55,16 @@ def detect_sub_images(images, net, min_confidence):
     subs = [True if len(box) > 0 else False for box in boxes]
 
     return subs
+
+
+def sub_timestamp(total_seconds):
+    total_seconds = total_seconds / 1000
+    hours = int(total_seconds / 3600)
+    minutes = int(total_seconds / 60 - hours * 60)
+    seconds = int(total_seconds - hours * 3600 - minutes * 60)
+    milliseconds = round((total_seconds - seconds - hours * 3600 - minutes * 60)*1000)
+
+    return '{:02d}_{:02d}_{:02d}_{:03d}'.format(hours, minutes, seconds, milliseconds)
 
 
 def save_subtitle(output, captions):
@@ -109,7 +120,7 @@ def make_sub_with_ref(video, ref, rect, lang, output, ipm=0):
 
         # 현재 frame에서 자막 추출
         sub_img = sub_image(img, rect)
-        text = detect_sub_text(sub_img, lang=lang, index=i, save=True)
+        text = detect_sub_text(sub_img, lang=lang, t=sub_timestamp(cap.get(cv2.CAP_PROP_POS_MSEC)), save=True)
         print("[{}]Frame position : {}, {} frame".format(i,
                                                          to_srt_timestamp(cap.get(cv2.CAP_PROP_POS_MSEC)),
                                                          cap.get(cv2.CAP_PROP_POS_FRAMES)), end=" ")
@@ -158,6 +169,16 @@ def extract_sub(not_sub):
     return sub_captions
 
 
+def is_same_sub(img1, img2):
+    if img2 is None:
+        return False
+    (score, diff) = compare_ssim(img1, img2, multichannel=True, full=True)
+    if score > 0.985:
+        return True
+    else:
+        return False
+
+
 def extract_sub_frames(video, rect, frame_window, model_path, batch_size, min_confidence):
     cap = cv2.VideoCapture(video)
     if not cap.isOpened():
@@ -179,6 +200,7 @@ def extract_sub_frames(video, rect, frame_window, model_path, batch_size, min_co
     not_sub = []
     sub_images = []
     sub_times = []
+    prev_img = (None, False)
     while cap.isOpened():
         pos = index * int(fpw)
         if pos >= frame_count:
@@ -190,24 +212,36 @@ def extract_sub_frames(video, rect, frame_window, model_path, batch_size, min_co
 
         img = frame
         # img = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-        # blur_img = image_preprocess(frame)
-        # cv2.imshow("blur image", blur_img)
         img = cv2.resize(img, (960, 540))
+        denoise_img = image_preprocess(img)
         sub_img = sub_image(img, rect)
-        sub_images.append(sub_img)
         t = cap.get(cv2.CAP_PROP_POS_MSEC)
-        sub_times.append(t)
-        if len(sub_images) >= batch_size:
-            subs = detect_sub_images(sub_images, net, min_confidence)
-            for sub, t in zip(subs, sub_times):
+        if batch_size > 1:
+            sub_images.append(sub_img)
+            sub_times.append(t)
+            if len(sub_images) >= batch_size:
+                subs = detect_sub_images(sub_images, net, min_confidence)
+                for i, (sub, t) in enumerate(zip(subs, sub_times)):
+                    if not sub:
+                        not_sub.append(t)
+                    else:
+                        total_sub_frames += 1
+                        # cv2.imwrite(os.path.join("./capture", "{}.png".format(sub_timestamp(t))), sub_images[i])
+                print("Time: {}, Number of subtitle frame : {}".format(to_srt_timestamp(t), total_sub_frames))
+
+                sub_images = []
+                sub_times = []
+        else:
+            if not is_same_sub(denoise_img, prev_img[0]):
+                sub = is_sub_image(sub_img, net)
                 if not sub:
                     not_sub.append(t)
                 else:
-                    total_sub_frames += 1
-            print("Time: {}, Number of subtitle frame : {}".format(to_srt_timestamp(t), total_sub_frames))
-
-            sub_images = []
-            sub_times = []
+                    # cv2.imshow("denoise image", img)
+                    prev_img = (denoise_img, sub)
+            else:
+                if not prev_img[1]:
+                    not_sub.append(t)
 
         img = draw_sub_border(img, rect)  # 자막 경계 박스 출력
         display_text(img, "Frame position : {}".format(to_srt_timestamp(t)))
@@ -262,8 +296,8 @@ if __name__ == "__main__":
     parser.add_argument("--ref", help="타임코드 자막")
     parser.add_argument("--output", help="출력 자막 파일명")
     parser.add_argument("--lang", default="eng", help="자막 언어")
-    parser.add_argument("--frame_window", default=100, type=int, help="프레임 간격(ms)")
-    parser.add_argument("--batch_size", default=256, type=int)
+    parser.add_argument("--frame_window", default=250, type=int, help="프레임 간격(ms)")
+    parser.add_argument("--batch_size", default=1, type=int)
     parser.add_argument("--pos", default="240,400,500,130", help="자막 영역 좌표")
     parser.add_argument("--model_path", default="./model/frozen_east_text_detection.pb")
     parser.add_argument("--ipm", default=0, type=int, help="이미지 전처리 모드")
