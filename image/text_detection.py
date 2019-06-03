@@ -214,6 +214,19 @@ def east_detect_image(image, net, min_confidence=0.7):
     return boxes
 
 
+def draw_boxes(img, boxes):
+    for (startX, startY, endX, endY) in boxes:
+        startX = int(startX)
+        startY = int(startY)
+        endX = int(endX)
+        endY = int(endY)
+
+        # draw the bounding box on the image
+        cv2.rectangle(img, (startX, startY), (endX, endY), (0, 255, 0), 2)
+
+    return img
+
+
 def east_detect_images(images, net, min_confidence=0.7):
     # define the two output layer names for the EAST detector model that
     # we are interested -- the first is the output probabilities and the
@@ -238,3 +251,14 @@ def east_detect_images(images, net, min_confidence=0.7):
         sub_boxes.append(sub_box)
 
     return sub_boxes
+
+
+if __name__ == "__main__":
+    net = cv2.dnn.readNet("../model//frozen_east_text_detection.pb")
+    img = cv2.imread("../capture/00_00_16_496.png")
+    img = cv2.resize(img, (320, 320))
+    boxes = east_detect_image(img, net)
+    img = draw_boxes(img, boxes)
+    cv2.imshow("boxes", img)
+    cv2.waitKey(3000)
+    cv2.destroyAllWindows()
