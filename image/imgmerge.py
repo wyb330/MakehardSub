@@ -1,8 +1,12 @@
 '''
 python 패키지 설치
 
+Shell에서 아래의 명령어를 실행하여 opencv와 numpy를 설치합니다.
 pip install opencv-python
 pip install numpy
+
+사용 예) python imgmerge.py -i C:/videosubfinder/RGBImages/*.jpeg -o C:/videosubfinder/TXTImages -b 50
+
 '''
 import glob
 import os
@@ -71,5 +75,3 @@ if __name__ == "__main__":
     parser.add_argument("-b", default=50, type=int, help="합칠 이미지 단위")
     args = parser.parse_args()
     main(args.i, args.o, args.b)
-
-    # main("C:/videosubfinder/RGBImages/*.jpeg", "C:/videosubfinder/TXTImages", 100)
