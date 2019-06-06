@@ -16,7 +16,7 @@ font_size = 1.2
 
 
 def display_text(img, text):
-    cv2.putText(img, text, (50, 50), font, font_size, (0, 0, 0), thickness=2)
+    cv2.putText(img, text, (30, 50), font, font_size, (0, 0, 0), thickness=2)
 
 
 def merge_images(images, output):
@@ -40,14 +40,29 @@ def str2time(time):
     return int(seconds * 1000)
 
 
-def main(path, save_path, batch_size=100):
+def sub_image(img, rect):
+    column = rect[0]
+    row = rect[1]
+    width = rect[2]
+    height = rect[3]
+    img = img[row:row+height, column:column+width]
+    return img
+
+
+def main(path, save_path, pos, batch_size=100):
+    rect = pos.split(',')
+    rect = [int(v) for v in rect]
     files = glob.glob(path)
     if len(files) > 0:
         images = []
         index = 0
         for file in files:
             img = cv2.imread(file)
+            if rect[2] > 0:
+                img = sub_image(img, rect)
             sub_t = '.'.join(os.path.basename(file).split('.')[:-1])
+            if sub_t.endswith('!'):
+                sub_t = str(sub_t[:-1])
             sub_t = sub_t.split('__')
             start = to_srt_timestamp(str2time(sub_t[0]))
             end = to_srt_timestamp(str2time(sub_t[1]))
@@ -69,7 +84,8 @@ if __name__ == "__main__":
     parser.add_argument("-i", help="자막 이미지", required=True)
     parser.add_argument("-o", help="저장할 디렉토리", required=True)
     parser.add_argument("-b", default=50, type=int, help="합칠 이미지 단위")
+    # 자막 영역 좌표 - left,top,width,height
+    # 영역 지정을 하지 않으려면 width을 0으로 설정
+    parser.add_argument("-r", default="0,200,700,250", type=str, help="자막 영역 좌표")
     args = parser.parse_args()
-    main(args.i, args.o, args.b)
-
-    # main("C:/videosubfinder/RGBImages/*.jpeg", "C:/videosubfinder/TXTImages", 100)
+    main(args.i, args.o, args.r, args.b)
