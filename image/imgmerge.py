@@ -51,6 +51,28 @@ def sub_image(img, rect):
     return img
 
 
+def detect_sub_area(image):
+    """
+    이미지에서 자막이 있는 영역을 찾는다.
+    자막이 없는 영역은 흰색으로 채워져 있으므로 영역의 평균 색상값으로 자막인지 여부를 판별한다.
+    :param image: 자막이 있는 이미지
+    :return:
+    """
+    (H, W) = image.shape[:2]
+    index = 0
+    d = 10
+    threshold = 165
+
+    while (index + 1) * d < H:
+        img = sub_image(image, [0, index * d, W, (index + 1) * d])
+        avg = np.mean(img)
+        if avg < threshold:
+            break
+        index += 1
+
+    return W, H, index * 10
+
+
 def main(path, save_path, pos, batch_size=100):
     rect = pos.split(',')
     rect = [int(v) for v in rect]
@@ -62,6 +84,10 @@ def main(path, save_path, pos, batch_size=100):
             img = cv2.imread(file)
             if rect[2] > 0:
                 img = sub_image(img, rect)
+            else:
+                width, height, top = detect_sub_area(img)
+                r = [0, top, width, height - top]
+                img = sub_image(img, r)
             sub_t = '.'.join(os.path.basename(file).split('.')[:-1])
             if sub_t.endswith('!'):
                 sub_t = str(sub_t[:-1])
@@ -88,6 +114,6 @@ if __name__ == "__main__":
     parser.add_argument("-b", default=50, type=int, help="합칠 이미지 단위")
     # 자막 영역 좌표 - left,top,width,height
     # 영역 지정을 하지 않으려면 width을 0으로 설정
-    parser.add_argument("-r", default="0,200,700,250", type=str, help="자막 영역 좌표")
+    parser.add_argument("-r", default="0,0,0,0", type=str, help="자막 영역 좌표")
     args = parser.parse_args()
     main(args.i, args.o, args.r, args.b)
