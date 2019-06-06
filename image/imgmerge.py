@@ -3,12 +3,14 @@ python 패키지 설치
 
 pip install opencv-python
 pip install numpy
+pip install tqdm
 '''
 import glob
 import os
 import cv2
 import numpy as np
 from argparse import ArgumentParser
+import tqdm
 
 
 font = cv2.FONT_HERSHEY_TRIPLEX
@@ -56,7 +58,7 @@ def main(path, save_path, pos, batch_size=100):
     if len(files) > 0:
         images = []
         index = 0
-        for file in files:
+        for file in tqdm.tqdm(files):
             img = cv2.imread(file)
             if rect[2] > 0:
                 img = sub_image(img, rect)
