@@ -60,7 +60,7 @@ def detect_sub_area(image):
     """
     (H, W) = image.shape[:2]
     index = 0
-    d = 10
+    d = 5
     threshold = 165
 
     while (index + 1) * d < H:
@@ -70,18 +70,21 @@ def detect_sub_area(image):
             break
         index += 1
 
-    return W, H, index * 10
+    return W, H, index * d
 
 
 def main(path, save_path, pos, batch_size=100):
     rect = pos.split(',')
     rect = [int(v) for v in rect]
     files = glob.glob(path)
+    h, w = (0, 0)
     if len(files) > 0:
         images = []
         index = 0
         for file in tqdm.tqdm(files):
             img = cv2.imread(file)
+            # 자막 영역이 지정되어 있으면 해당 영역만 불러오고
+            # 그렇지 않으면 자막 영역을 찾는다.
             if rect[2] > 0:
                 img = sub_image(img, rect)
             else:
@@ -95,6 +98,13 @@ def main(path, save_path, pos, batch_size=100):
             start = to_srt_timestamp(str2time(sub_t[0]))
             end = to_srt_timestamp(str2time(sub_t[1]))
             display_text(img, "{} --> {}".format(start, end))
+
+            if index == 0:
+                h, w = img.shape[:2]
+            else:
+                h_n, w_n = img.shape[:2]
+                if (w != w_n) or (h != h_n):
+                    img = cv2.resize(img, (w, h))
             images.append(img)
             index += 1
             if len(images) >= batch_size:
