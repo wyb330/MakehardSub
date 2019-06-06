@@ -297,7 +297,7 @@ if __name__ == "__main__":
     parser.add_argument("--output", help="출력 자막 파일명")
     parser.add_argument("--lang", default="eng", help="자막 언어")
     parser.add_argument("--frame_window", default=250, type=int, help="프레임 간격(ms)")
-    parser.add_argument("--batch_size", default=1, type=int)
+    parser.add_argument("--batch_size", default=32, type=int)
     parser.add_argument("--pos", default="240,400,500,130", help="자막 영역 좌표")
     parser.add_argument("--model_path", default="./model/frozen_east_text_detection.pb")
     parser.add_argument("--ipm", default=0, type=int, help="이미지 전처리 모드")
