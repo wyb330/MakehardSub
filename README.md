@@ -63,7 +63,6 @@ python hardsub.py --video example.mp4 --ref example.srt --output example.smi --l
 ## 자막 이미지 합치기
 
 ```
-cd image
 python imgmerge.py -i C:\videosubfinder\RGBImages\*.jpeg -o C:\videosubfinder\TXTImages -r "0,200,700,250"
 ```
 
