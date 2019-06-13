@@ -63,12 +63,13 @@ python hardsub.py --video example.mp4 --ref example.srt --output example.smi --l
 ## 자막 이미지 합치기
 
 ```
-python imgmerge.py -i C:\videosubfinder\RGBImages\*.jpeg -o C:\videosubfinder\TXTImages -r "0,200,700,250"
+python imgmerge.py -i C:\videosubfinder\RGBImages\*.jpeg -o C:\videosubfinder\TXTImages -r "0,0,0,0"
 ```
 
 옵션  
 -i: 합칠 이미지 파일  
 -o: 합친 이미지의 저장 디렉토리   
--b: 합칠 이미지 단위  
+-b: 합칠 이미지 단위. 0이면 배치 크기를 자동으로 결정    
 -r: 자막 영역의 좌표(left,top,width,height). 지정하지 않으려면 width를 0으로 설정  
+-s: 저장할 타임코드용 자막 파일명  
 

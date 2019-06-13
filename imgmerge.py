@@ -85,6 +85,13 @@ def detect_sub_area(image):
     return W, H, index * d
 
 
+def calc_batch_size(w, h):
+    size = w * h * 0.8
+    batch = int(10000 * 1000 / size)
+    print("batch size :{}".format(batch))
+    return batch
+
+
 def main(path, save_path, pos, batch_size=100, output=None):
     rect = pos.split(',')
     rect = [int(v) for v in rect]
@@ -96,7 +103,10 @@ def main(path, save_path, pos, batch_size=100, output=None):
             width, height, top = detect_sub_area(cv2.imread(files[0]))
             h_t = 40 * 2  # 타임 코드 텍스트 높이
             rect = [0, top - h_t, width, height - top + h_t]
+            print("자막 영역 : {}".format(rect))
 
+        if batch_size == 0:
+            batch_size = calc_batch_size(rect[2], rect[3])
         images = []
         index = 0
         subtitle = Subtitle()
@@ -140,7 +150,7 @@ if __name__ == "__main__":
     parser = ArgumentParser()
     parser.add_argument("-i", help="자막 이미지", required=True)
     parser.add_argument("-o", help="저장할 디렉토리", required=True)
-    parser.add_argument("-b", default=50, type=int, help="합칠 이미지 단위")
+    parser.add_argument("-b", default=0, type=int, help="합칠 이미지 단위")
     # 자막 영역 좌표 - left,top,width,height
     # 영역 지정을 하지 않으려면 width을 0으로 설정
     parser.add_argument("-r", default="0,0,0,0", type=str, help="자막 영역 좌표")
